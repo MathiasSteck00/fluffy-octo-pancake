@@ -1,5 +1,8 @@
 #define BAUD (57600) // How fast is the Arduino talking?
 #define MAX_BUF (64) // What is the longest message Arduino can store?
+#define X 1
+#define Y 2
+#define Z 3
 
 char buffer[MAX_BUF]; // where we store the message until we get a ';'
 int sofar; // how much is in the buffer
@@ -17,6 +20,12 @@ void setup() {
 /**
  * display helpful information
  */
+
+void oneStep(int amount, int motor, int dir){
+  
+  tone(motorPin, frequency, duration);
+}
+
 void help() {
   Serial.print(F("3D Printer Skills 2018 "));
   Serial.println(VERSION);
@@ -70,8 +79,8 @@ void loop() {
  */
 
 void line(float newx,float newy) {
-  long dx=newx-px; // distance to move (delta)
-  long dy=newy-py;
+  float dx=newx-px; // distance to move (delta)
+  float dy=newy-py;
   int dirx=dx > 0?1:-1; // direction to move
   int diry=dy > 0?1:-1;
   dx=abs(dx); // absolute delta
@@ -82,17 +91,50 @@ void line(float newx,float newy) {
 
   if(dx > dy) {
     for(i=0;i < dx;++i) {
-      m1.onestep(dirx);
+      
+      oneStep(5, X, dirx);
       over+=dy;
       if(over>=dx) {
         over-=dx;
-        m2.onestep(diry);
+        oneStep(5, Y, diry);
       }
       pause(step_delay); // step_delay is a global connected to feed rate.
       // test limits and/or e-stop here
     }
   } else {
-    for(i=0;i < dy;++i) { m2.onestep(diry); over+=dx; if(over>=dy) { over-=dy; m1.onestep(dirx); } pause(step_delay); // step_delay is a global connected to feed rate. // test limits and/or e-stop here } } // update the logical position. We don't just = newx because // px + dx * dirx == newx could be false by a tiny margin and we don't want rounding errors. px+= dx*dirx; py+= dy*diry; } /** * delay for the appropriate number of microseconds * @input ms how many milliseconds to wait */ void pause(long ms) { delay(ms/1000); delayMicroseconds(ms%1000); // delayMicroseconds doesn't work for values > ~16k. } /** * Set the feedrate (speed motors will move) * @input nfr the new speed in steps/second */ void set_feedrate(float nfr) { if(fr==nfr) return; // same as last time? quit now. if(nfr > MAX_FEEDRATE || nfr < MIN_FEEDRATE) { // don't allow crazy feed rates
+    for(i=0;i < dy;++i) {
+      oneStep(5, Y, diry);
+      over+=dx;
+      if(over>=dy) { 
+        over-=dy;
+        oneStep(5, X, dirx);
+      }
+      pause(step_delay); // step_delay is a global connected to feed rate.
+      // test limits and/or e-stop here 
+    } 
+  }
+     // update the logical position. We don't just = newx because
+     // px + dx * dirx == newx could be false by a tiny margin and we don't want rounding errors.
+  px+= dx*dirx;
+  py+= dy*diry;
+} 
+
+
+/**
+* delay for the appropriate number of microseconds 
+* @input ms how many milliseconds to wait 
+*/ 
+void pause(long ms){
+  delay(ms/1000);
+  delayMicroseconds(ms%1000); // delayMicroseconds doesn't work for values > ~16k. 
+} 
+/** 
+* Set the feedrate (speed motors will move) 
+* @input nfr the new speed in steps/second 
+*/ 
+void set_feedrate(float nfr) {
+  if(fr==nfr) return; // same as last time?quit now. 
+  if(nfr > MAX_FEEDRATE || nfr < MIN_FEEDRATE) { // don't allow crazy feed rates
     Serial.print(F("New feedrate must be greater than "));
     Serial.print(MIN_FEEDRATE);
     Serial.print(F("steps/s and less than "));
@@ -111,7 +153,7 @@ void processCommand() {
   case 0:
       moveExtruder(x, y, speed);// move in a line
   case 1: // move in a line
-    set_feedrate(parsenumber('E',fr));
+    set_feedrate(parsenumber('F',fr));
     line( parsenumber('X',(mode_abs?px:0)) + (mode_abs?0:px),
     parsenumber('Y',(mode_abs?py:0)) + (mode_abs?0:py) );
     break;
