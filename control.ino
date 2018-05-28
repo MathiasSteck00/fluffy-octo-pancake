@@ -22,7 +22,8 @@ void setup() {
  */
 
 void oneStep(int amount, int motor, int dir){
-  
+  int frequency = 24000;
+  int duration = (int)(amount * (1/24));
   tone(motorPin, frequency, duration);
 }
 
@@ -83,31 +84,38 @@ void line(float newx,float newy) {
   float dy=newy-py;
   int dirx=dx > 0?1:-1; // direction to move
   int diry=dy > 0?1:-1;
+  
+  int xSteps;
+  int ySteps;
+  
   dx=abs(dx); // absolute delta
   dy=abs(dy);
+  
+  xSteps = (int)(dx / 0.0025); //How many positive flanks in delta X
+  ySteps = (int)(dy / 0.0025); //How many positive flanks in delta Y
 
   long i;
   long over=0;
 
   if(dx > dy) {
-    for(i=0;i < dx;++i) {
+    for(i=0;i < xSteps;++i) {
       
-      oneStep(5, X, dirx);
-      over+=dy;
-      if(over>=dx) {
-        over-=dx;
-        oneStep(5, Y, diry);
+      oneStep(1, X, dirx);
+      over+=ySteps;
+      if(over>=xSteps) {
+        over-=xSteps;
+        oneStep(1, Y, diry);
       }
       pause(step_delay); // step_delay is a global connected to feed rate.
       // test limits and/or e-stop here
     }
   } else {
-    for(i=0;i < dy;++i) {
-      oneStep(5, Y, diry);
-      over+=dx;
-      if(over>=dy) { 
-        over-=dy;
-        oneStep(5, X, dirx);
+    for(i=0;i < ySteps;++i) {
+      oneStep(1, Y, diry);
+      over+=xSteps;
+      if(over>=ySteps) { 
+        over-=ySteps;
+        oneStep(1, X, dirx);
       }
       pause(step_delay); // step_delay is a global connected to feed rate.
       // test limits and/or e-stop here 
