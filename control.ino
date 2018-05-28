@@ -18,7 +18,7 @@ void setup() {
  * display helpful information
  */
 void help() {
-  Serial.print(F("CNC Robot "));
+  Serial.print(F("3D Printer Skills 2018 "));
   Serial.println(VERSION);
   Serial.println(F("Commands:"));
   Serial.println(F("G00 [X(steps)] [Y(steps)] [F(feedrate)]; - linear move"));
@@ -68,18 +68,55 @@ void loop() {
 /**
  * Read the input buffer and find any recognized commands. One G or M command per line.
  */
+
+void line(float newx,float newy) {
+  long dx=newx-px; // distance to move (delta)
+  long dy=newy-py;
+  int dirx=dx > 0?1:-1; // direction to move
+  int diry=dy > 0?1:-1;
+  dx=abs(dx); // absolute delta
+  dy=abs(dy);
+
+  long i;
+  long over=0;
+
+  if(dx > dy) {
+    for(i=0;i < dx;++i) {
+      m1.onestep(dirx);
+      over+=dy;
+      if(over>=dx) {
+        over-=dx;
+        m2.onestep(diry);
+      }
+      pause(step_delay); // step_delay is a global connected to feed rate.
+      // test limits and/or e-stop here
+    }
+  } else {
+    for(i=0;i < dy;++i) { m2.onestep(diry); over+=dx; if(over>=dy) { over-=dy; m1.onestep(dirx); } pause(step_delay); // step_delay is a global connected to feed rate. // test limits and/or e-stop here } } // update the logical position. We don't just = newx because // px + dx * dirx == newx could be false by a tiny margin and we don't want rounding errors. px+= dx*dirx; py+= dy*diry; } /** * delay for the appropriate number of microseconds * @input ms how many milliseconds to wait */ void pause(long ms) { delay(ms/1000); delayMicroseconds(ms%1000); // delayMicroseconds doesn't work for values > ~16k. } /** * Set the feedrate (speed motors will move) * @input nfr the new speed in steps/second */ void set_feedrate(float nfr) { if(fr==nfr) return; // same as last time? quit now. if(nfr > MAX_FEEDRATE || nfr < MIN_FEEDRATE) { // don't allow crazy feed rates
+    Serial.print(F("New feedrate must be greater than "));
+    Serial.print(MIN_FEEDRATE);
+    Serial.print(F("steps/s and less than "));
+    Serial.print(MAX_FEEDRATE);
+    Serial.println(F("steps/s."));
+    return;
+  }
+  step_delay = 1000000.0/nfr;
+  fr=nfr;
+}
+
 void processCommand() {
   // look for commands that start with 'G'
   int cmd=parsenumber('G',-1);
   switch(cmd) {
-  case 0: // move in a line
+  case 0:
+      moveExtruder(x, y, speed);// move in a line
   case 1: // move in a line
-    set_feedrate(parsenumber('F',fr));
+    set_feedrate(parsenumber('E',fr));
     line( parsenumber('X',(mode_abs?px:0)) + (mode_abs?0:px),
     parsenumber('Y',(mode_abs?py:0)) + (mode_abs?0:py) );
     break;
-  // case 2: // clockwise arc
-  // case 3: // counter-clockwise arc
+  case 2: // clockwise arc
+  case 3: // counter-clockwise arc
   case 4: pause(parsenumber('P',0)*1000); break; // wait a while
   case 90: mode_abs=1; break; // absolute mode
   case 91: mode_abs=0; break; // relative mode
@@ -103,4 +140,18 @@ void processCommand() {
   }
 
   // if the string has no G or M commands it will get here and the Arduino will silently ignore it
+}
+
+void moveExtruder(int nextpos_x, int nextpos_y, int speed){
+ //x and y in mm
+ //speed in mm/min
+  //50 Steps = 1mm
+  if(nextpos_x > currentpos_x)
+    digitalWrite(directionPin_x, 1); //Move in positive X Axis, set direction pin to HIGH
+  else
+    digitalWrite(directionPin_x, 0);
+  
+  tone(X_AXIS_PIN,X_frequency,X_duration)
+
+  
 }
